@@ -1,0 +1,1544 @@
+# ai.wing — Change Log
+
+Append-only record of AI-made changes so any entry can be reverted precisely.
+This project is **not** under git, so this file is the only revert history.
+
+Format per entry:
+
+    ## [NNN] YYYY-MM-DD — Short title
+    Scope:   files touched
+    Change:  what changed, specifically
+    Revert:  exact steps to undo
+
+---
+
+## [001] 2026-07-27 — Hero: scroll-scrubbed assembly + premium animation layer
+
+**Scope**
+- `components/Hero.tsx`
+- `app/globals.css`
+
+**Change**
+
+1. **Scroll-scrubbed assembly timeline** (`Hero.tsx`, in `useGSAP`, added after the
+   trust-icon idle-float block). A `scrub: 1` timeline bound to the hero's own
+   scroll span. Reversible on scroll-up. Layers separate in depth as the hero
+   exits:
+   - headline line 1 → `yPercent -14, z 60`
+   - headline line 2 (accent) → `yPercent -26, z 120` (trails line 1)
+   - sub-copy → `yPercent -18`
+   - offer chip → `yPercent -26, rotate -1.5`
+   - form → `yPercent -10` (holds longest; it's the conversion target)
+   - trust rail → `yPercent -34`, staggered 0.04 so it unthreads L→R
+
+   All tweens drive **transform only** — never opacity alone — so a throttled
+   ticker or an un-fired trigger can't strand copy invisible.
+
+2. **Typographic accent animation** (same block). Per-character weight shimmer on
+   the accent line: each char scales to 1.06 and lifts 4% in sequence
+   (`stagger.each 0.045`, yoyo, `repeatDelay 3.4`). Transform-driven.
+
+3. **Headline line tags** (`Hero.tsx` JSX, ~line 334/339). Added
+   `data-hero-line="1"` and `data-hero-line="2"` to the two `SplitLine` wrapper
+   spans so the assembly timeline can address them independently.
+
+4. **Sub-headline humanised** (`Hero.tsx`, `[data-hero-sub]`). Official claims
+   preserved verbatim (100 Mbps*, unlimited data**); phrasing warmed:
+   added "reaching homes the cable companies never will" and "right where you
+   live".
+
+5. **Brand token `--color-brand-space: #05103A`** (`globals.css` `@theme`).
+   Sampled from hughesnet.com's live computed styles.
+
+6. **`.surface-a` graded** (`globals.css`). Was a flat
+   `background-color: var(--color-brand-blue-dark)`. Now additionally carries
+   `background-image: linear-gradient(180deg, brand-blue-dark 0%, #0A2C55 55%,
+   brand-space 100%)` so the hero sky gains depth toward the foot.
+
+**Source of truth for colors/content**
+Scraped live from <https://www.hughesnet.com/> this session:
+- `#DE3700` CTA orange · `#0096FA` h1/link blue · `#005DAC` logo blue
+- `#154A8E` / `#0E4275` navies · `#53565A` body ink · `#05103A` deep space (new)
+- H1: "Hughesnet Satellite Internet for Rural America"
+- Hero claims: "Unlimited, high-speed satellite internet!", "FREE Professional
+  Installation†", "Price Guarantee", "24/7 Live Customer Care", "Affordable
+  Plans", "SAVE $25/mo. for 12 months!^", "up to 100 Mbps*", phone 855-543-5405
+
+**Revert**
+1. `Hero.tsx` — delete the `SCROLL-SCRUBBED ASSEMBLY` block (the `assembly`
+   timeline) and the `Typographic accent` block (the `accentChars` tween).
+2. `Hero.tsx` — remove `data-hero-line="1"` / `data-hero-line="2"` attributes
+   from the two headline wrapper spans.
+3. `Hero.tsx` — restore sub-headline to:
+   `Unlimited, high-speed satellite internet — with fast speeds up to 100 Mbps*
+   and unlimited data**, available where you live.`
+4. `globals.css` — remove the `--color-brand-space` token and its comment.
+5. `globals.css` — restore `.surface-a` to `background-color` only (delete the
+   `background-image` gradient and the added comment lines).
+
+---
+
+## [002] 2026-07-27 — "5 reasons": bento grid → spine cascade + scrubbed assembly
+
+**Scope**
+- `components/WhyChoose.tsx` (only file touched)
+
+**Change**
+
+1. **Layout replaced.** Was a bento grid (`grid md:grid-cols-2 lg:grid-cols-3`
+   with the featured card spanning 2 columns). Now an **asymmetric cascade hung
+   off a vertical signal spine**: a flex column where each card carries its own
+   width + indent, producing a zigzag editorial descent instead of equal tiles.
+   - New `CASCADE` const (literal Tailwind strings so JIT sees them):
+     `lg:w-[72%]` · `lg:w-[58%] lg:ml-[30%]` · `lg:w-[54%] lg:ml-[7%]` ·
+     `lg:w-[61%] lg:ml-[32%]` · `lg:w-[52%] lg:ml-[4%]`
+   - All `lg:`-prefixed, so mobile stays full-width stacked. Every
+     width+indent pair sums under 100%, so no horizontal overflow.
+   - Container gained `lg:pl-10` to clear the spine.
+
+2. **Spine + connector nubs added.** A vertical gradient line (`data-wc-spine`)
+   down the left, and a short horizontal nub per card (`data-wc-nub`) linking
+   each card back to it. Nub is offset with `-left-8` rather than
+   `translateX(-2rem)` so GSAP's transform (which owns `scaleX`) can't clobber
+   the positioning.
+
+3. **`ReasonCard` re-wrapped.** Now `({ reason, index })`. An outer `div`
+   carries `data-reason-card` + cascade geometry and is the GSAP target; the
+   inner `motion.div` keeps the framer pointer-tilt/magnetic transforms. Two
+   separate elements so scroll assembly and pointer tilt never write the same
+   element's transform. Featured card lost `lg:col-span-2` (no grid now).
+
+4. **Scroll-scrubbed assembly** (`scrub: 1`, start `top 80%` → end
+   `bottom 65%`, reversible). Spine draws first, then per card on its own
+   timeline slice (`0.1 + i * 0.16`):
+   - card deals out from the spine: `x -110, scale 0.9, rotateY 10, rotateZ -1.5`
+   - connector nub extends (`scaleX 0 → 1`)
+   - numeral stamps on (`clip-path inset(0 0 100% 0)` → `inset(0 0 0% 0)`)
+   Transform + clip-path only — no opacity-only entrances, so a throttled
+   ticker can't strand a card invisible.
+
+5. **Ghost numerals** gained `data-ghost-num` + initial
+   `clipPath: 'inset(0 0 100% 0)'`.
+
+6. **Removed:** the old `toggleActions` card entrance (y/z/rotateX/blur) and the
+   `[data-wc-trace]` dash-offset tween + its SVG path (the trace was drawn for
+   the grid layout and has no place in the cascade). Verified 0 orphan refs.
+
+**Kept unchanged:** all hover behaviour (cursor spotlight, conic border sheen,
+3D tilt, magnetic drift, icon halo/rotate), ambient loops (signal-meter breathe,
+ripple arcs, tile starfield), the stat count-up and signal-bar entrance, the
+masthead, and the section background.
+
+**Verified**
+`tsc --noEmit` exit 0 · 5 cards with distinct widths (752/608/563/635/543) and
+distinct indents (6/346/77/373/41) → cascade confirmed, not a grid · all cards
+`opacity: 1` (legible) · spine 1, nubs 5, numerals 5 · no error overlay · no
+horizontal scroll.
+
+**Revert**
+1. `WhyChoose.tsx` — delete the `CASCADE` const.
+2. Restore `ReasonCard` to `({ reason })`: remove the outer wrapper `div` and
+   the nub `span`, put `data-reason-card` back on the `motion.div`, restore
+   `lg:col-span-2` to the featured className, and drop `h-full`.
+3. Remove `data-ghost-num` and the `clipPath` inline style from the numeral.
+4. Restore the container to the bento grid with its `[data-wc-trace]` SVG and
+   `grid grid-cols-1 gap-5 [perspective:1600px] md:grid-cols-2 lg:grid-cols-3`,
+   mapping `REASONS` without `index`.
+5. Delete the `SCROLL-SCRUBBED ASSEMBLY` block and restore the old
+   `gsap.from('[data-reason-card]', …)` toggleActions entrance plus the
+   `[data-wc-trace]` `strokeDashoffset` tween.
+
+> **Superseded by [003].** The cascade shipped in [002] wasted large horizontal
+> gutters (cards only 52–72% wide) and roughly doubled the section height.
+> Reverting to [002] is not recommended; revert to the [001] state instead.
+
+---
+
+## [003] 2026-07-27 — "5 reasons": cascade → full-width row ledger
+
+**Scope**
+- `components/WhyChoose.tsx` (only file touched)
+
+**Why**
+[002]'s spine cascade was wrong: varying card widths (52–72%) left big empty
+gutters on alternating sides and stretched the section far taller than the
+content needed. This replaces it with a layout that uses the full column width.
+
+**Change**
+
+1. **Layout: cascade → full-width ledger.** `ReasonCard` is no longer a card in
+   a column; it's a full-bleed **row** in a flex stack. Each row is
+   `grid-cols-[auto_1fr]` (→ `sm:[auto_1fr_auto]`): a compact marker column
+   (numeral + icon tile side by side), the copy taking all remaining width, and
+   an optional right rail. Rows are separated by hairline dividers rather than
+   card borders.
+   - Removed the `CASCADE` width/indent const, the vertical spine, and the
+     per-card connector nubs (`data-wc-spine`, `data-wc-nub`) — all artefacts of
+     the cascade. Verified 0 orphan references.
+   - Row 01 keeps the navy fill as the section's focal anchor, but now as a
+     full-width bar, so the emphasis costs no extra space.
+   - Right rail holds the 100 Mbps stat + signal bars on row 01 and the ripple
+     arcs on row 02, sitting *within* the row's own height.
+
+2. **Scroll-scrubbed assembly rewritten for rows** (`scrub: 1`, start
+   `top 82%` → end `bottom 70%`, reversible). Per row on its own slice
+   (`i * 0.17`), the ledger writes itself line by line:
+   - divider rule draws L→R (`scaleX 0 → 1`)
+   - the row slides in along that rule (`x -46`)
+   - the copy trails the marker column slightly (`x -18`) so the row reads L→R
+   - the numeral stamps on (`clip-path inset(0 0 100% 0)` → `inset(0 0 0% 0)`)
+   Transform + clip-path only; no opacity-only entrances.
+
+3. **Hover reworked for row geometry.** A full 3D card tilt is wrong on a wide
+   row, so the tilt/magnetic drift is gone. Rows now get: cursor spotlight, a
+   left accent bar that grows vertically, a row background tint, icon tile
+   lift/scale/fill with halo, and an arrow that slides in at the right edge.
+
+**Verified**
+`tsc --noEmit` exit 0 · all 5 rows measure the full grid width (1206/1206px) →
+no wasted gutters · section height 964px (was far taller as a cascade) · 4
+dividers (correct: rows 2–5) · 5 numerals · all rows `opacity: 1` (legible) ·
+no error overlay · desktop and 375px mobile both free of horizontal overflow,
+titles wrap cleanly.
+
+**Revert**
+Restoring [002] is not advised (see note above). To return to the pre-[002]
+bento grid, follow the [002] revert steps 1–5 — they describe the original
+grid markup and toggleActions entrance in full.
+
+> **Superseded by [004].** The row ledger, while space-efficient, is a very
+> common pattern. Replaced with a dish-assembly canvas.
+
+---
+
+## [004] 2026-07-27 — "5 reasons": row ledger → satellite-dish assembly canvas
+
+**Scope**
+- `components/WhyChoose.tsx` (full rebuild)
+- `components/ResellerBenefits.tsx` (one-line hydration fix, unrelated bug found
+  while verifying — see below)
+
+**Change — WhyChoose**
+
+Complete rebuild. The section is now an **assembly canvas**: a satellite
+dish/tower outline is drawn stroke-by-stroke at centre, then five scattered
+icons fly into slots ringed around it, each revealing its reason text as it
+lands, closing with a confirming pulse.
+
+1. **Tunables exposed at the top of the file** (as specified):
+   `SCATTER_RADIUS` (multiplier on scatter vectors), `STAGGER_DELAY` (0.13s
+   between icon flights), `DRAW_DURATION` (outline draw as a fraction of the
+   scrub timeline), and `DISH_PATHS` (every stroke of the dish outline as data).
+
+2. **Dish SVG** (`viewBox 0 0 400 430`): three concentric reflector rims on a
+   −10° mount, three feed-horn struts, the horn itself, plus mast / legs / ground
+   pad. Every stroke carries `pathLength={1}` + `strokeDasharray="1"` +
+   `strokeDashoffset="1"` so a dashoffset of 1→0 draws it fully regardless of
+   real path length. 10 strokes total.
+
+3. **Scroll sequence** (`scrub: true`, fully reversible), gated in order:
+   1. Outline draws itself (`strokeDashoffset 1 → 0`, lightly staggered).
+   2. Icons fly from scattered starts to their slots — `transform` only
+      (x/y/rotate/scale), staggered by `STAGGER_DELAY`. **Each icon has its own
+      ease** (`power3.out`, `power2.out`, `power4.out`, `power3.out`,
+      `power2.out`) so no two arrive on the same curve. No bounce/elastic.
+   3. Each icon's text wipes open via `clip-path: inset()`, synced to *that*
+      icon's landing, wiping outward away from the dish (left-side pairs wipe
+      right→left, right-side wipe left→right).
+   4. After the 5th lands: dish pulses `scale 1 → 1.02 → 1` and a stroked ring
+      scales outward `0.62 → 1.18` while its `strokeOpacity` fades to 0.
+
+4. **Scatter values are hand-authored, not generated.** `Math.random()` in
+   render would desync SSR and client markup; the offsets are deliberately
+   uneven (x −236…+214, y −148…+206, rotation ±16–27°) to read as random.
+
+5. **Responsive.** Desktop uses a `lg:grid-cols-[1fr_400px_1fr]` ring — reasons
+   01/03 left, 02/04 right, 05 below, dish centre spanning both rows. Below
+   `lg` the dish is hidden and `gsap.matchMedia()` swaps to a **simple
+   sequential reveal with no scatter** (small x offset + clip wipe only), per
+   the spec's fallback requirement.
+
+6. **Removed:** the row-ledger markup, `RippleVisual`, the framer tilt/magnetic
+   drift and conic sheen (`useSpring`/`useTransform` imports dropped), and the
+   `[data-wc-rule]` divider tweens. Verified 0 orphan references.
+
+**Change — ResellerBenefits (bug fix)**
+The rotating certification seal built path coordinates with raw
+`Math.cos(a) * 28`. Node and the browser produced different final float digits
+(`…501468` vs `…501471`), which React reported as a **real hydration
+mismatch** on every page load. Coordinates are now `.toFixed(3)`. Confirmed
+fixed in the DOM: paths render `M32 32 L60.000 32.000`.
+
+**Verified**
+`tsc --noEmit` exit 0 · `.next` cleared and rebuilt from scratch · no server
+errors · no error overlay · 5 icon/text pairs + 10 dish strokes + ring + body
+all present · all `pathLength` normalised to 1 · all text and icons at
+`opacity: 1` (no opacity-only entrances) · seal hydration fix confirmed in
+rendered DOM.
+
+**Not verified — flagged honestly:** the browser pane's viewport is reporting
+`clientWidth: 0` this session, so I could not measure the assembled layout or
+watch the scroll sequence run. Structure, build and console are clean; the
+*visual* result needs an eye on a real browser.
+
+**Revert**
+Restore `components/WhyChoose.tsx` to the [003] row-ledger implementation
+(full-width rows, `data-wc-rule` dividers, row-slide assembly). The
+ResellerBenefits `.toFixed(3)` fix should be **kept** regardless — it corrects a
+genuine hydration bug and is independent of this section.
+
+--------------------------------------------------------------------------------
+[005] — WhyChoose polish pass (dish, icons, typography, pointer field)
+--------------------------------------------------------------------------------
+
+**Scope** — `components/WhyChoose.tsx`, `app/globals.css`.
+A refinement of [004], not a rebuild. The assembly structure, scatter geometry,
+stagger timing and mobile fallback from [004] are all unchanged.
+
+**Change — the dish**
+1. Strokes went from flat `#005DAC` @ 1.5 / opacity .55 to a
+   `url(#wcDishGrad)` gradient (`#7FCBFF → #0096FA → #005DAC`) @ 2.25 /
+   opacity .85, so the outline reads as a lit object rather than a wireframe.
+2. Two **overlay** ellipses (`data-rim="mid"` / `data-rim="inner"`) sit on top
+   of the drawn mid/inner rims and carry a travelling dash (52s one way, 41s
+   the other). *Rotating the real ellipses was tried and rejected* — with
+   `rx ≠ ry` a rotation visibly tumbles the ring instead of spinning it.
+   Travelling dashes read as rotation and stay flat. They are separate elements
+   because a repeating `stroke-dasharray` would otherwise clobber the
+   `dasharray: 1` the scroll draw-in depends on.
+3. `[data-dish-glow]` — a blurred radial behind the reflector centre, breathing
+   scale/blur on a 4.2s sine loop.
+4. The whole dish is wrapped in a `motion.div` carrying
+   `transformPerspective: 1100` + `rotateX/rotateY` (±7–8°) + drift, spring-
+   lagged (`stiffness 55, damping 20`). Perspective is set via
+   `transformPerspective`, not a `perspective` class — the latter only affects
+   children, not the element's own rotation.
+
+**Change — icons**
+Flat white tile → glass chip (`bg-white/50`, `backdrop-blur-md`, inset
+highlight, `rounded-2xl`). Hover springs to 1.09 and the glow blurs wider;
+`icon-stroke-redraw` (globals.css) re-draws the lucide strokes on hover. Each
+icon floats on its own phase (2.4 + i·0.37s) so the row never lifts as a slab.
+
+**Change — typography / connectors**
+Numbers are now `tracking-[0.28em]` in `brand-blue-bright/90`. Each title has a
+gradient underline (`wcUnderGrad`) that draws in at `at + 0.26`, just after its
+icon seats. Connectors became SVG: `data-wc-link` draws in solid, and a
+separate `data-wc-flow` line scales open behind it carrying dashes that travel
+*toward* the dish (`data-flow="out"|"in"` per side).
+
+**Change — interaction**
+A single normalised pointer field on the `<section>` (`ptrX`/`ptrY`, −0.5…0.5)
+feeds every spring, so the canvas responds as one field rather than via
+per-element listeners. Guarded by `prefers-reduced-motion`.
+
+**Critical invariant honoured:** GSAP owns `[data-wc-icon]`'s transform (scatter
+flight + idle float); Framer's hover spring was moved to a **nested inner
+span**. The two libraries never write the same element's transform.
+
+**Verified**
+`npx tsc --noEmit` exit 0 · `npx next build` succeeded, 12/12 static pages ·
+dev server compiles clean (the `Unexpected token 'section'` errors in the
+console buffer are **stale** — they quote a single-line `<section>` that no
+longer exists; `grep` for it exits 1) · DOM confirms 5 pairs, 5 icons, 4
+connectors + 4 flow lines (pair 05 is `side: bottom`, correctly has none), 5
+underlines, both rim overlays, the glow, and all three gradients resolving
+(`stroke="url(#wcDishGrad)"`, width 2.25) · zero elements stranded at
+`opacity: 0` / `visibility: hidden` / zero-matrix · end-state layout measured
+with the start-states cleared: dish centred at x 435–835, pairs 01/03 left,
+02/04 right, 05 centred beneath, glow concentric with the reflector, no
+horizontal overflow.
+
+**Not verified — flagged honestly:** the preview pane reports
+`document.hidden: true` and **0 rAF frames**, and GSAP's ticker is rAF-driven,
+so no scrub or idle loop can advance in it. Every animated value stays frozen
+at its `.from()` start. Structure, build, console and assembled layout are
+confirmed; the *motion itself* — tilt feel, dash travel speed, glow breathe —
+has not been watched and needs an eye on a real browser.
+
+**Revert**
+Restore `components/WhyChoose.tsx` to the [004] satellite-dish implementation
+(flat `#005DAC` strokes @ 1.5, plain white icon tiles, `<span>` connectors with
+`scaleX`, no pointer field, no `ReasonPair` component — the markup was inline in
+the `REASONS.map()`), and delete the `icon-stroke-redraw` keyframes plus the
+`[data-wc-pair]:hover [data-wc-icon] svg > *` rule from `app/globals.css`.
+[004]'s structure is intact underneath this pass, so reverting is safe.
+
+--------------------------------------------------------------------------------
+[006] — WhyChoose fixes: dish geometry, azimuth sweep, icon float containment
+--------------------------------------------------------------------------------
+
+**Scope** — `components/WhyChoose.tsx`, `app/globals.css`.
+
+**Fix 1 — the dish read as a blob/eye, not a satellite dish**
+`DISH_PATHS` replaced. Was three *concentric full ellipses* (which is what made
+it read as an eye) on a floating chevron. Now a prime-focus dish:
+- `rim` — the reflector opening (one ellipse, not three).
+- `bowlOuter` / `bowlInner` — interior contours that arc **upward** across the
+  face (`A120 44 0 0 0`). This is what makes the reflector read as a concave
+  bowl; concentric rings read as flat.
+- `strutLeft/Right/Centre` + `hornCone` + a horn circle — feed at the focal point.
+- `neck`, `mast`, `legLeft/Right/Front`, `footLeft/Right/Front` — a real tripod.
+  The base had been reduced to a chevron; it is now a mast with three splayed
+  legs and feet.
+Removed: `rimOuter/rimMid/rimInner`, `legs`, `pad`, `data-dish-scan`.
+
+**Fix 2 — dish now sweeps 360°, lighting each card in turn**
+Removed the alternating dash-travel ring idle from [005] entirely.
+A single proxy tween drives `azimuth.deg` 0→360 over `SWEEP_DURATION` (26s),
+`repeat: -1`, `ease: 'none'`. Its `onUpdate`:
+1. Sets `[data-dish-spin]` `scaleX = cos θ` (floored at 0.08 so it never fully
+   vanishes edge-on) plus a ±5° `rotate` lean. **A flat 2D `rotate` was wrong** —
+   it spins the dish face like a pinwheel. Real azimuth rotation foreshortens the
+   ellipse, and `scaleX` going negative past 90° is correct: that is the moment
+   we begin seeing the dish's back.
+2. Splits the sweep into 5 × 72° segments and stamps `data-lit="true"` on the
+   matching pair, in clockwise visual order `SWEEP_ORDER = ['01','02','04','05','03']`.
+Only the reflector group spins; the tripod is outside `[data-dish-spin]` and
+stays put, as a real mount does.
+
+**Fix 3 — icons floated far enough to overlap text**
+Root cause: the idle float wrote `y` on `[data-wc-icon]`, the *same element* the
+scroll assembly's `.from()` writes `x/y/rotate/scale` on. The two tweens fought
+over one transform, and the resulting values were what let icons wander into the
+headline and body copy. The float now drives a new dedicated `[data-wc-bob]`
+element nested inside `[data-wc-icon]`, amplitude cut from 4px to **3px** and
+period slowed (3.2s + i·0.4). Three nested nodes now, one owner each:
+`[data-wc-icon]` GSAP assembly → `[data-wc-bob]` GSAP float → `motion.span`
+Framer hover.
+
+**Also fixed — the [005] hover effect was never running**
+The radar highlight was first written with Tailwind `group-data-[lit=true]:`
+arbitrary variants. Tailwind's JIT **never emitted those rules** — verified 0
+matching rules in the served CSS. Rewritten as plain CSS in `globals.css`
+(`[data-wc-pair][data-lit='true'] …`). Worth noting the same class of bug means
+the `[data-wc-pair]:hover [data-wc-icon]` stroke-redraw added in [005] is present
+in the served CSS and does resolve — that one was authored as plain CSS and is fine.
+
+**Verified**
+`npx tsc --noEmit` exit 0 · dev server compiles, `GET / 200`, **no server errors** ·
+0 orphan references to the removed `rimOuter/rimMid/rimInner/data-rim/data-dish-scan/legs/pad` ·
+16 `[data-dish-draw]` strokes present; `[data-dish-spin]` bbox y 30–296 (reflector
++ horn + neck) inside a full svg bbox y 30–420, so the tripod renders below it and
+is outside the spinning group · sweep math replayed across a full 360°: exactly 5
+transitions at 0/72/144/216/288°, all five cards, correct order · `scaleX`/lean at
+quadrants = 1/0, 0.08/+5, −1/0, −0.08/−5 as intended · highlight verified on all
+5 pairs with transitions disabled: chip `#005DAC → #0096FA`, connector
+`2px → 3.5px`, title `#0E4275 → #005DAC` (pair 05 has no connector by design) ·
+`[data-wc-bob]` measures exactly the icon slot (44×44) and, expanded by the full
+±3px float, **no icon box intersects its text box** on any of the five (gaps
+28–168px).
+
+**Not verified — flagged honestly:** the preview pane still reports 0 rAF frames,
+so GSAP's ticker never advances there. The sweep tween, the icon float and all
+CSS transitions stay frozen at their start values in that pane — which is why the
+highlight only measured as working once transitions were force-disabled. The
+*logic* is confirmed by replay and by direct state toggling; the sweep actually
+turning, at the speed it turns, needs an eye on a real browser.
+
+**Revert**
+Restore `components/WhyChoose.tsx` to the [005] implementation (concentric
+`rimOuter/rimMid/rimInner` ellipses, `data-rim` dash-travel idle, `data-dish-scan`,
+`legs`/`pad` base, float on `[data-wc-icon]`, no `[data-wc-bob]`, no
+`[data-dish-spin]`, no `SWEEP_*` tunables) and delete the
+"WhyChoose: radar-sweep highlight" block from `app/globals.css`.
+
+--------------------------------------------------------------------------------
+[007] — WhyChoose: hand-drawn dish replaced with a sourced CC0 illustration
+--------------------------------------------------------------------------------
+
+**Scope** — `components/WhyChoose.tsx`, plus new `public/vendor/`.
+
+**Why** — every previous dish in this section ([004]–[006]) was hand-authored from
+SVG primitives and none of them read as a satellite dish. Per instruction, the
+geometry is now a sourced asset and no longer drawn by us.
+
+**Asset**
+"Axial reflecting dish with monopod antenna and beams Pinhead icon", Wikimedia
+Commons, **CC0 1.0** — verified by reading `imageinfo → extmetadata →
+LicenseShortName` from the MediaWiki API, not from a search snippet. Original file
+and licence record committed at `public/vendor/satellite-dish-cc0.svg` and
+`.LICENSE.txt`. A single filled path in a 0 0 15 15 viewBox: dish, monopod feed,
+pedestal base with splayed foot, two beam arcs.
+
+Two SVG Repo candidates (#216854, #204611) were downloaded, recoloured and
+previewed, then **ruled out** — their licence could not be verified (the pages are
+client-rendered and carry no licence text in the HTML), which is not worth the
+risk on a commercial site.
+
+**Change**
+1. `DISH_PATHS` (15 hand-authored primitives) deleted; replaced by the `DISH_ART`
+   path constant + `DISH_CENTRE`. Path data is byte-for-byte as sourced —
+   asserted equal against the vendored file, 603 chars both sides. Only the fill
+   is ours (`url(#wcDishGrad)`).
+2. Dish `<svg>` viewBox 0 0 400 430 → **0 0 15 15** (the asset's own box); glow
+   ring recentred to 7.5/7.5 r 6.6, stroke 0.12.
+3. **The stroke draw-in had to go.** The old reveal ran `strokeDashoffset` across
+   16 stroked elements; the sourced artwork is one *filled* path with no stroke,
+   so a dashoffset reveal has nothing to act on. Replaced with a
+   `scale 0.62 → 1` + `rotate -28 → 0` settle on `[data-dish-art]`. Still
+   transform-only, so the "never animate opacity alone" rule holds.
+4. Sweep simplified to a literal `rotate(azimuth)` on `[data-dish-spin]` about
+   `DISH_CENTRE`, per the explicit spec ("rotate() on the whole icon group").
+   The [006] `scaleX = cos θ` foreshortening is gone. `SWEEP_DURATION` (26s) and
+   the 5 × 72° `SWEEP_ORDER` card-highlight sync are unchanged.
+5. Three nested groups keep transform ownership separate:
+   `[data-dish-body]` scroll pulse → `[data-dish-spin]` idle rotation →
+   `[data-dish-art]` scrubbed reveal.
+
+**Verified**
+`npx tsc --noEmit` exit 0 · `GET / 200`, dev server `✓ Compiled` · 0 remaining
+`DISH_PATHS` / `[data-dish-draw]` references · DOM confirms the svg, all three
+groups, `fill="url(#wcDishGrad)"` resolving, and 400 px rendered width · inlined
+path asserted byte-identical to the vendored source file.
+
+**Known visual consequence — flagged, not a bug**
+The asset has a pedestal base, i.e. a ground reference. A full 360° `rotate()`
+therefore carries it upside-down through the second half of every revolution
+(clearest at 216°). This is what the spec asked for and is implemented as asked.
+If it reads wrong, the one-line fix is in the sweep tween: swap
+`deg: 360` for a yoyo over a limited arc, e.g.
+`gsap.to(azimuth, { deg: 50, duration: 13, yoyo: true, repeat: -1, ease: 'sine.inOut' })`
+— the 72° segment mapping keeps working, it just covers a narrower arc.
+
+**Not verified** — the preview pane still renders 0 rAF frames, so the rotation
+and the highlight transitions do not advance there. Geometry, licence, build and
+DOM wiring are confirmed; the motion needs a real browser.
+
+**Revert**
+Restore `components/WhyChoose.tsx` to [006] (the `DISH_PATHS` primitives, the
+0 0 400 430 viewBox, `[data-dish-draw]` stroke reveal, and the `scaleX = cos θ`
+sweep) and delete `public/vendor/`.
+
+--------------------------------------------------------------------------------
+[008] — WhyChoose: dish becomes a looping video; highlight synced to its clock
+--------------------------------------------------------------------------------
+
+**Scope** — `components/WhyChoose.tsx`, new `public/media/`, removed `public/vendor/`.
+
+**Asset**
+`public/media/satellite-dish-orbit.mp4` — user-supplied 3D render of a dish
+completing one full revolution. ffprobe: **10.005s, 240 frames @ 24fps,
+1280×720, h264, 2.5 MB**. One revolution per loop, so a fifth of the loop is
+exactly 72° of rotation. A poster still (`-poster.jpg`, 11 KB) was extracted from
+frame 0 with ffmpeg so nothing pops in before the video decodes.
+
+**Change**
+1. Every trace of the static dish is gone: `DISH_ART`, `DISH_CENTRE`, the
+   `0 0 15 15` `<svg>`, `[data-dish-art]`, `[data-dish-spin]`, the `wcDishGrad`
+   gradient, and `SWEEP_DURATION`. `public/vendor/` (the [007] CC0 SVG and its
+   licence record) deleted — no longer referenced. Verified 0 orphan refs.
+2. `<video autoplay loop muted playsinline>` in its place, inside
+   `[data-dish-body]` at the same `max-w-[400px]`. Cropped `aspect-[4/3]` +
+   `object-cover`: the footage is 16:9 but the dish sits centred, so the crop
+   fills the column's height without cutting the subject. A radial mask
+   (`black 55% → transparent 82%`) feathers the video's own light-blue backdrop
+   into the section rather than leaving a hard rectangle — the render's palette
+   already matches brand blue, so it blends rather than sits on top.
+3. **Highlight retargeted from the ping cycle to the loop.** The old driver
+   tweened an `azimuth` proxy and derived the segment from its angle. Now the
+   segment is read from **`video.currentTime`**, not from an independent timer.
+   This matters: a free-running timer drifts out of phase the instant the loop
+   stalls, buffers, or the tab throttles, and the highlight would slowly slide
+   away from the rotation it is meant to describe. Reading the video's own clock
+   re-syncs on every tick. Falls back to wall-clock only if `duration` is not yet
+   finite (still decoding, or autoplay blocked).
+4. Driven by `setInterval(…, 120)`, deliberately not the GSAP ticker — the
+   ticker is rAF-driven and stops dead in a background tab, which would freeze
+   the highlight mid-card. Cleared in the `useGSAP` cleanup alongside `mm.revert()`.
+5. Scroll reveal simplified to a `scale 0.78 → 1` on `[data-dish-body]`. The old
+   reveal also rotated; that would have fought the rotation the footage is
+   already doing. `[data-dish-ring]` is now an HTML span, so its tween moved from
+   `strokeOpacity` to `opacity`.
+6. `preload="metadata"`, not `auto` — below `lg` this column is `display:none`,
+   and preloading 2.5 MB a mobile visitor never sees is the wrong trade for a
+   rural-internet audience.
+
+**Verified — including runtime, for the first time this section**
+Because the highlight runs on `setInterval` rather than rAF, it actually advances
+in the preview pane, so this was observed rather than inferred:
+- `npx tsc --noEmit` exit 0 · `GET / 200` · **no server errors**.
+- `/media/satellite-dish-orbit.mp4` → HTTP 200, `video/mp4`, 2,615,444 bytes;
+  poster → HTTP 200, `image/jpeg`.
+- Video element: `readyState 4`, `paused: false`, `duration 10.005` (matches
+  ffprobe exactly), `1280×720`, `error: null`, autoplay/loop/muted/playsInline
+  all true, poster set.
+- **Highlight cycle observed live over ~11.5s**, transitions at
+  `0.07s→01`, `2.07s→02`, `4.07s→04`, `6.33s→05`, `8.18s→03`, then wrapping
+  cleanly back to `01`. Segment boundaries are 0 / 2.001 / 4.002 / 6.003 / 8.004,
+  so every switch landed within one 120 ms tick. Exactly one card lit at any
+  moment. Order matches `SWEEP_ORDER` ['01','02','04','05','03'].
+- 0 remaining `DISH_ART` / `DISH_CENTRE` / `data-dish-art` / `data-dish-spin` /
+  `data-dish-draw` / `wcDishGrad` / `SWEEP_DURATION` references.
+
+**Not verified** — the video's *visual* fit at desktop width. The pane viewport is
+below `lg`, where this column is `display:none` (measured 0×0), so the 4:3 crop
+and the radial mask feather have not been seen at 400 px. Frames were inspected
+directly via ffmpeg and the palette matches; the composition at final size needs
+a real browser.
+
+**Revert**
+Restore `components/WhyChoose.tsx` to [007] (the `DISH_ART` CC0 path, the
+`0 0 15 15` svg, `[data-dish-spin]` rotate sweep and the azimuth-proxy driver),
+restore `public/vendor/` from the Commons URL in [007], and delete
+`public/media/`.
+
+--------------------------------------------------------------------------------
+[009] — WhyChoose: highlight order, timeupdate driver, 350ms crossfade
+--------------------------------------------------------------------------------
+
+**Scope** — `components/WhyChoose.tsx`, `app/globals.css`.
+A tightening of [008]. The segment mechanism was already 5 equal fifths read
+from `video.currentTime`; this fixes order, driver and timing.
+
+**Change**
+1. **`SWEEP_ORDER` changed from clockwise-spatial to numeric.** Was
+   `['01','02','04','05','03']` — the order the cards sit around the stage
+   going clockwise. Now `['01','02','03','04','05']`, i.e. card N in segment N
+   as specified. Worth knowing: 03 and 04 sit lower-left and lower-right, so the
+   highlight now *zigzags* across the layout instead of travelling around it.
+   Reading order was specified over spatial order, so that is what shipped.
+2. **`timeupdate` is now the primary driver**, per spec. The 120ms interval is
+   kept as a backstop — `timeupdate` fires only ~4×/sec and stops entirely while
+   paused, stalled or throttled, which would leave a segment boundary up to
+   250ms late. Both handlers read the same `video.currentTime`, so the interval
+   cannot introduce drift; it only samples more often.
+3. Added `play`, `seeked` and `visibilitychange` listeners so a clock jump
+   re-syncs immediately rather than on the next tick. All four listeners plus
+   the interval are torn down in the `useGSAP` cleanup.
+4. **Crossfade retimed 700ms → 350ms** and centralised. Timing now lives in one
+   block in `globals.css` covering chip, chipglow, connector, flow line and h3;
+   the competing `duration-700` Tailwind utilities were removed from the
+   component so there is a single source of truth. Outgoing and incoming cards
+   share the same duration and `ease-in-out` curve, so the handover reads as one
+   glow moving rather than two independent on/off switches.
+
+**Verified (runtime, observed not inferred)**
+- `npx tsc --noEmit` exit 0 · no server errors.
+- Computed transitions on a live pair: chip `0.35s / color, border-color,
+  box-shadow` · chipglow `0.35s / filter, transform, opacity` · connector
+  `0.35s / stroke-width, stroke-opacity` · h3 `0.35s / color`.
+- **Full loop observed over 12.5s** after a hard reload: `0.06s→01`, `2.06s→02`,
+  `4.26s→03`, `6.06s→04`, `8.06s→05`, then wrapping to `01`. Boundaries are
+  0 / 2.001 / 4.002 / 6.003 / 8.004 — every switch inside one sampling window.
+- `maxLitAtOnce: 1` and `everZero: false` across every sample: exactly one card
+  lit at all times, never a gap with none lit.
+- **Seek re-sync proved directly**: with the video *paused*, seeking to
+  7.0 / 9.0 / 0.5 / 3.0 / 5.0s produced 04 / 05 / 01 / 02 / 03 — all five
+  correct. This is the behaviour that a separate independent timer could not
+  give, since a paused video advances no clock.
+
+**Caught during this pass:** the first post-edit run still showed the old
+`01→02→04→05→03` order. Fast Refresh had swapped the CSS but not re-run the
+`useGSAP` effect holding the old array in its closure. A hard reload was needed
+to see the change — worth remembering when verifying edits to constants captured
+inside that effect.
+
+**Not verified** — the intermediate frames of the 350ms crossfade. The pane
+renders 0 rAF frames, so CSS transitions never advance in it; the declared
+durations are confirmed but the fade itself has not been watched.
+
+**Revert**
+In `components/WhyChoose.tsx` restore `SWEEP_ORDER` to
+`['01','02','04','05','03']`, drop the `timeupdate` / `play` / `seeked` /
+`visibilitychange` listeners and their teardown; in `app/globals.css` set the
+`[data-wc-pair]` transition block back to 700ms.
+
+--------------------------------------------------------------------------------
+[010] — Hero scene replaced with video; WhyChoose lit state strengthened
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Hero.tsx`, new `components/hero/OrbitScene.tsx`,
+`components/WhyChoose.tsx`, `app/globals.css`, new `public/media/hero-orbit.*`.
+**Deleted:** `components/hero/OrbitalUplink.tsx` (788 lines),
+`components/hero/StarField.tsx` (228 lines).
+
+**A · WhyChoose — lit state was too weak, and text lagged the icon**
+1. Text now uncovers *with* its icon. The assembly wiped `[data-wc-text]` at
+   `at + 0.18`, i.e. after the icon landed; it now starts at `at` (duration
+   0.16 → 0.22) so the pair arrives as one unit.
+2. Lit treatment strengthened, and it now includes the copy — previously only
+   the title shifted colour and the body never responded at all. Verified all
+   six properties change on `data-lit`, from a forced-unlit baseline:
+   border `white/60 → #0096FA` · chip bg `white/50 → pale blue tint` ·
+   glow `blur(16px) → blur(24px) brightness(1.5)` · glow scale `0.7 → 1.35` ·
+   **body copy `#53565A → #0E4275`** · title `#0E4275 → #005DAC`, plus a 4px
+   ring and a heavier drop shadow. All share the one 350ms crossfade, so icon
+   and text light simultaneously.
+   *Caught here:* the first measurement showed no change because card 01 was
+   already lit when sampled — the honest test pauses the video and forces the
+   pair unlit first.
+
+**B · Hero — hand-built scene replaced with footage**
+The supplied clip already contains satellite, beam, house, horizon and stars, so
+it replaces the entire SVG scene rather than sitting behind it.
+
+1. **Loop seam fixed.** The source cut visibly at its loop point — first vs last
+   frame measured **22.08 dB PSNR**. Rebuilt with ffmpeg so the last 0.9s
+   crossfades back over the first 0.9s: seam now **36.12 dB**, i.e. near
+   identical. Duration 10.005s → 9.125s, and the re-encode also dropped it
+   2.6 MB → 1.3 MB.
+2. `OrbitScene.tsx` renders the video full-bleed (`object-cover`,
+   `object-position: 68% center` so the satellite stays in frame), a
+   left-weighted scrim, and the three HUD elements carried over verbatim from
+   the deleted `OrbitalUplink`: the Mbps/Download badge (with its count-up
+   reimplemented on rAF), the Unlimited Data badge, and the Signal Locked pill.
+   Coordinates retuned to the footage — badges right, pill at `left 54%` beside
+   the house.
+3. The hero grid keeps its second column as an empty spacer, so the headline and
+   form stay exactly where they were.
+4. **Parallax retargeted, not dropped.** `sceneY` / `sceneScale` used to drive
+   `[data-hero-scene]`; they are now passed into `OrbitScene` and applied to the
+   `motion.video` itself, so the whole plate drifts and scales as one. The
+   entrance `.from()` moved onto `[data-hud]` with a 0.12s stagger.
+5. `preload="metadata"`, consistent with [008].
+
+**Verified**
+`npx tsc --noEmit` exit 0 · `GET / 200` · `/media/hero-orbit.mp4` 200, 1,296,123 B ·
+**0 remaining references to `OrbitalUplink` or `StarField`** anywhere in
+`components/` or `app/` · video element `readyState 4`, `duration 9.125`
+(matches the re-cut), `error: null`, loop/muted/playsInline/poster all set,
+box 1270×796 full-bleed, `object-fit: cover`, `object-position: 68% 50%` ·
+3 HUD badges present with correct text.
+
+**Legibility — measured, as asked.** Sampled the real video pixels via canvas,
+composited the scrim's per-x alpha over them, and computed WCAG contrast against
+the white type. Headline **17.71** · Mbps badge **14.86** · Unlimited badge
+**13.46** · Signal Locked pill **16.07** · legal line **16.68**. AA needs 4.5 for
+body and 3 for large; AAA needs 7. Everything clears AAA with margin.
+
+**Not verified** — playback itself. The pane reports `document.hidden: true`, and
+browsers refuse to advance media in a hidden document: `play()` resolves but
+`currentTime` stays 0. The element, its source, dimensions and framing are
+confirmed; the loop running (and the rAF count-up, which is likewise frame-driven)
+needs a real browser.
+
+**Revert**
+Restore `components/hero/OrbitalUplink.tsx` and `StarField.tsx` from [009] state,
+revert `Hero.tsx` (re-import both, `<StarField className="z-0" />`, the
+`data-hero-scene` motion.div wrapping `<OrbitalUplink />`, and the
+`[data-hero-scene]` entrance tween), delete `components/hero/OrbitScene.tsx` and
+`public/media/hero-orbit.*`. For part A only: in `WhyChoose.tsx` put the text
+wipe back to `at + 0.18` / duration 0.16, and in `globals.css` revert the
+`[data-lit]` chip/glow block and drop the `[data-wc-text] p` rules.
+
+--------------------------------------------------------------------------------
+[011] — Hero video sizing: contain plate, badges pinned to the footage
+--------------------------------------------------------------------------------
+
+**Scope** — `components/hero/OrbitScene.tsx` only. CSS/layout, no re-encode.
+
+**Problem** — `object-cover` scales the footage UP to fill the section. The hero
+is not 16:9, so the video was magnified ~11% on tall viewports and ~13% on wide
+short ones, which enlarged the satellite and pushed the house/horizon off the
+bottom of the fold. Worst at short laptop heights, exactly as reported.
+
+**Fix** — the video now lives in a 16:9 "plate" sized to *fit*, and a second
+plate of identical geometry carries the HUD, so badge percentages are
+percentages **of the footage** and stay pinned to satellite/beam/house at any
+viewport instead of drifting with the letterboxing.
+
+Sizing took three attempts; the first two silently broke the 16:9 box:
+1. `aspect-video h-full w-auto max-h/max-w` — `h-full` is an *explicit* height
+   and overrides `aspect-ratio`. At 1920×1080 the plate measured 1180×920
+   (ratio **1.28**), so `object-cover` inside it was cropping again.
+2. `aspect-video w-full max-h/max-w` — `max-height` clamps the height but does
+   **not** pull the width in. At 1440×780 the plate measured 1180×620
+   (ratio **1.90**). Still cropping.
+3. **Shipped:** every constraint folded into a single `min()` on *width*, with
+   `aspect-ratio` deriving the height —
+   `w-[min(94%,1180px,calc((100svh-10rem)*16/9))]`. Width is the sole driver, so
+   the ratio survives all three constraints.
+   · `1180px` holds the satellite near 295px rather than growing with the viewport.
+   · `(100svh-10rem)*16/9` is the height budget expressed as a width. The 10rem
+     looks generous because the hero itself runs past the fold at 660px tall and
+     the plate centres in the section, so the budget must absorb that offset,
+     not just the navbar.
+
+Badge coordinates retuned to plate-relative: Mbps `left 70% / top 38%`,
+Unlimited `left 72% / top 62%`, Signal Locked `left 57% / top 73%` — the last
+placed right of the beam, which crosses x≈52% at that height.
+
+Deliberately **not** `transform: scale()`: it would shrink the HUD layer's type
+along with the footage. Capping the box shrinks only the video; the badges keep
+their own font sizes (verified 16/24/16px unchanged across all three viewports).
+
+**Verified — measured at three viewports**
+| viewport | plate | ratio | satellite | horizon vs fold |
+|---|---|---|---|---|
+| 1920×1080 | 1180×664 | 1.777 | 295px | 767 / 1080 |
+| 1440×780  | 1102×620 | 1.777 | 276px | 677 / 780  |
+| 1366×660  | 889×500  | 1.778 | 222px | 638 / 660 (22px clear) |
+
+All three: `is16by9` true · house and horizon inside the fold · all three badges
+inside the fold · all three clear of the beam (checked by solving the beam's x at
+each badge's mid-height) · badge font sizes unchanged.
+
+Contrast re-measured at 1366×660 after the geometry change, sampling real video
+pixels through the scrim: headline **17.89**, Mbps **14.32**, Unlimited **12.90**,
+Signal Locked **17.53**. AA needs 4.5, AAA 7.
+
+**Not verified** — playback. The pane reports `document.hidden: true` and
+browsers will not advance media in a hidden document, so framing is confirmed
+from the poster frame but the loop running still needs a real browser.
+
+**Revert** — restore `PLATE` in `components/hero/OrbitScene.tsx` to
+`'absolute inset-0 h-full w-full object-cover object-[68%_center]'` on the video
+with the HUD positioned against the section rather than a plate.
+
+--------------------------------------------------------------------------------
+[012] — Hero: true full-bleed video, anchored HUD, headline movement removed
+--------------------------------------------------------------------------------
+
+**Scope** — `components/hero/OrbitScene.tsx`, `components/Hero.tsx`.
+
+**A · Full-bleed video (reverses [011]'s contain plate)**
+[011] fitted the video into a letterboxed 16:9 plate, which is what produced the
+visible edge on the right. The video is now `absolute left-0 top-0 w-full h-full
+object-cover object-center`, filling the section corner to corner.
+
+Because `object-fit: cover` crops a *different slice of the frame at every
+viewport*, the badges can no longer be static CSS percentages — under [011] they
+were percentages of a plate that matched the footage exactly; under cover that
+assumption is gone. They are now resolved through the same transform the browser
+applies to the video (`k = max(w/1280, h/720)`, centred overflow), recomputed on
+mount, on `ResizeObserver`, and on `resize`. Anchors are held in source-frame
+coordinates (`BADGE_ANCHORS`), each picked to clear the beam at its own height.
+Positions are written as `left`/`top`, **not** transform — GSAP owns the badges'
+transform for the entrance stagger and would fight it.
+
+Badges are clamped to the *visible band* (`min(hostHeight, innerHeight - hostTop)`),
+not the host's full height. Without that the Signal Locked pill anchored
+correctly to the house but landed at y659/bottom 685 on a 660px viewport — off
+screen. Clamped it sits at y613/bottom 644.
+
+**B · Video asset — nothing to swap**
+The attached file is **byte-identical** to the one already in the project:
+2,618,227 bytes, mtime 17:59, `md5 ea00b373f3fddbb0485627b309bca9ba`, same
+1280×720 / 10.005s. The de-watermarked version did not come through, so
+`public/media/hero-orbit.mp4` is unchanged (still the [010] crossfaded re-cut,
+9.125s, 36 dB seam).
+
+**C · Headline movement removed**
+Two separate sources, not one:
+1. The entrance `.from('[data-hero-chars] [data-char]', { yPercent: 120,
+   rotateX: -75, opacity: 0 })` — the per-character rise.
+2. **An infinite idle tween** on `[data-hero-line="2"]` ("for Rural America"):
+   `gsap.to(accentChars, { scale: 1.06, yPercent: -4, repeat: -1, yoyo: true,
+   repeatDelay: 3.4 })`. This was the recurring bounce; removing only the
+   entrance would have left it running.
+Both deleted. The headline is now simply present — no transform, no fade.
+An interim version used a per-char `from(opacity: 0)` fade, which measured
+`anyOpacityZero: true` in a pane with no rAF frames: 35 characters invisible if
+the timeline never runs. Given this project has already had text blanked by
+animating its legibility, that was dropped too. The copy block around it still
+fades as a whole. Scroll-tied parallax on `[data-hero-line]` is untouched.
+
+**Verified at 1366×660 after a hard reload**
+Headline: 35 chars, `allOpaque: true`, `allNoTransform: true`, `minOpacity: 1`,
+and no positional change sampled 1200 ms apart (idle bounce confirmed gone).
+Video: `fullBleed: true` (video box === section box), `object-fit: cover`,
+`object-position: 50% 50%`, `duration 9.125`, `error: null`, loop + muted set.
+HUD: all three placed by the hook, all inside the fold, all clear of the beam.
+Also checked at 1440×780 and 1920×1080 — full-bleed true at both, all badges
+placed, in fold and clear of the beam.
+`npx tsc --noEmit` exit 0.
+
+**Regression accepted, and it is a real one:** at 1366×660 the house (y685) and
+horizon (y733) now sit **below the fold**. Full-bleed cover fills the section,
+and the hero section is 798 px tall on a 660 px viewport because its own content
+is that tall — so the lower third of the composition is simply below the fold.
+[011]'s contain plate kept them visible; that was the trade being made for the
+letterbox edge. Fixing it properly means shortening the hero, not resizing the
+video. Flagged rather than silently reverted, since full-bleed was the explicit ask.
+
+**Not verified** — playback. `document.hidden: true` in the pane; browsers will
+not advance media in a hidden document.
+
+**Revert** — A: restore the `PLATE`/`PLATE_WRAP` plate from [011] and drop
+`useCoverAnchors` + the badge refs. C: restore the two GSAP blocks in
+`Hero.tsx` (the `[data-hero-chars] [data-char]` `.from` and the `accentChars`
+idle tween).
+
+--------------------------------------------------------------------------------
+[013] — New hero video; hero seam + scroll-fade fixes; WhyChoose hover/glow
+--------------------------------------------------------------------------------
+
+**Scope** — `components/hero/OrbitScene.tsx`, `components/Hero.tsx`,
+`components/Navbar.tsx`, `components/WhyChoose.tsx`, `app/globals.css`,
+`public/media/hero-orbit.*`.
+
+**Video swapped.** The watermark-free file did arrive this time —
+`md5 c5c6ed70…` vs the previous `ea00b373…`, 1.92 MB vs 2.62 MB, same
+1280×720 / 10.005s. Ran through the same tail-over-head crossfade as [010];
+shipped file is 9.125s, 1.33 MB, loop seam **36.02 dB**.
+
+**Seam at the right edge — it was not the video.** Measured: video width 1356 =
+`document.documentElement.clientWidth` = section width, left 0. `w-screen`
+computes to the same 1356, because content cannot paint under the scrollbar.
+The bright strip was the **custom scrollbar track** (`::-webkit-scrollbar-track:
+#F4F6F8` in globals) reading as a light rail against the near-black hero. Track
+is now `transparent`; the thumb is untouched. `w-screen` reverted to `w-full`
+since it gains nothing and can overflow on browsers that count the scrollbar in
+100vw.
+
+**Seam at the header boundary.** The navbar is white 0.8–0.95 with `border-b`
+plus a drop shadow; against the dark hero that border was the visible line. Both
+border and shadow now animate to fully transparent in the unscrolled state and
+back when scrolled. Deliberately did **not** make the navbar transparent: its
+links are `#003A70` on white and it is `fixed` over mostly-light sections, so
+transparency would need a per-section colour inversion — a much larger change
+than the reported symptom.
+
+**Hero scroll fade removed.** `contentOpacity = useTransform(scrollYProgress,
+[0,0.65],[1,0])` deleted and dropped from the copy block's style. Parallax y/x
+retained. Verified the block's inline style is now exactly `transform:none` —
+no opacity channel at all.
+
+**WhyChoose additions**
+1. *Text entrance* — the clip wipe now carries a slight lateral slide
+   (`x: ±20 → 0`) alongside `clipPath`, still starting on the same frame as its
+   icon, still staggered per card. No opacity involved.
+2. *Hover* — lift `y: -4` (spring), border brightens, and a radial brand-blue
+   glow fades in **behind** the pair. The glow is a `::before` on the pair with
+   `z-index: -1` under `isolate`, so it can never wash over the copy.
+   **Structural change forced here:** the pair was a single `motion.div` already
+   carrying `x/y` pointer drift, and a hover lift also wants `y`. Two animations
+   cannot write one element's `y`, so the pair is now three nodes —
+   outer `div` (layout + hover target + glow context) › drift `motion.div` ›
+   lift `motion.div`.
+3. *Background* — `.wc-glowfield` adds two counter-drifting radial fields to the
+   section on 26s/34s loops, transform-driven, behind the content.
+All three respect `prefers-reduced-motion`.
+
+**Verified** — `npx tsc --noEmit` exit 0 · no error overlay · video full-bleed
+(`full: true`), duration 9.125, `error: null` · hero copy inline style
+`transform:none` · all headline chars at opacity 1 · 5 pairs, glowfield present,
+5 lift wrappers · navbar border and shadow both transparent at rest.
+
+**Not verified** — playback and the hover/idle motion: the pane reports
+`document.hidden: true` (media will not advance) and renders no rAF frames.
+
+**Revert** — restore `contentOpacity` in `Hero.tsx`; put the navbar's
+`borderColor`/shadow back; restore `::-webkit-scrollbar-track: #F4F6F8`; collapse
+the WhyChoose pair back to one `motion.div` and delete the `.wc-glowfield` /
+`[data-wc-pair]::before` blocks from globals.
+
+--------------------------------------------------------------------------------
+[014] — Four sections rebuilt for structural uniqueness
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Technology.tsx`, `components/Features.tsx`,
+`components/HowItWorks.tsx`, `components/ResellerBenefits.tsx`,
+new `components/features/RadialNetwork.tsx`, `app/globals.css`.
+**Deleted:** `components/features/DeviceStage.tsx`.
+
+**1 · JUPITER — spec-sheet reveal, vertical sequential gate**
+Three per-fact ScrollTriggers replaced by ONE scrubbed timeline with each row in
+its own 1-unit slot. A row's underline completes at slot+0.95 and the next row
+begins at slot+1, so this is a genuine gate — the previous per-row triggers
+could overlap whenever rows were close together. Underline is an SVG line with
+`pathLength={1}`, `strokeDasharray="1"`, drawn left-to-right; it replaced the
+CSS hover-width bar. Row spacing py-7 → py-11. Body copy reveals with
+`clipPath` + `y`, never opacity alone. Photos: each wrapper gained
+`overflow-hidden rounded-xl` and `[data-tech-photo]:hover img { scale(1.05) }`
+in globals, so the zoom is clipped to the frame and moves the image only; the
+existing `photoY` scroll parallax is retained.
+
+**2 · Connected life — radial hub-and-spoke**
+`DeviceStage` deleted, replaced by `RadialNetwork.tsx`: router hub at the centre
+of a 0 0 400 400 viewBox, four devices on a 128px ring at 0/90/180/270°. Spokes
+are trimmed at both ends (`inner 36`, `outer RING-44`) so they spring from the
+hub's edge and stop at the device rather than running under either. Sequence per
+spoke: line draws (`strokeDashoffset` 1→0, 0.42s), then its device scales in
+**at at+0.42** — gated on the line arriving, not run alongside it. After settling,
+a second overlaid `[data-rn-flow]` line carries travelling dashes; it must be a
+separate element because a repeating dasharray would overwrite the `dasharray="1"`
+the draw-in depends on (same trap as the WhyChoose connectors). Three hub rings
+pulse outward on a stagger. Structure is radial — distinct from the hero's single
+beam and JUPITER's rows. Removed the now-dangling `[data-ds-device]` entrance and
+all `[data-ds-*]` ambient tweens; verified 0 orphan references.
+
+**3 · Signal locked — bars promoted, cards demoted**
+Analyser height h-14 → h-40/lg:h-52, the percentage figure text-5xl → text-7xl/
+lg:text-8xl, dish 16 → 24. Step cards reduced to secondary weight: padding
+p-5 → p-3.5, icon tile 11 → 8, gap 4 → 2.5, shadow softened, and the connecting
+rail thinned from 2px to 1px. Bars now grow from `scaleY: 0` in sequence, and the
+card row is gated behind them with `'>-0.05'` — the readout completes first.
+Removed the old bar flicker tween: it wrote on the same elements as the grow-in
+and would have fought it.
+
+**4 · Local Advantage — directional panel slide**
+Tab/underline structure untouched, as specified. Added `AnimatePresence` with
+`mode="popLayout"` (so the outgoing panel cannot push the incoming one down while
+both are mounted) and a `prevActive` ref deriving direction: a tab to the right
+enters from +20px and exits to -20px, reversed for leftward moves. 0.34s.
+
+**Verified after all four** — `npx tsc --noEmit` exit 0 · no Next error overlay ·
+9 sections render · JUPITER 3 facts / 3 underlines / 3 photos · radial svg with
+1 hub, 4 lines, 4 flows, 4 nodes, 0 stale `[data-ds-*]` · signal 1 meter /
+40 bars / 4 cards · Local Advantage panel mounts ("Official Partnership",
+"Commitment 01 / 05") · **0 stranded elements** (no `visibility: hidden`, no
+zero-matrix) across all rebuilt sections · no horizontal overflow.
+
+**Not verified** — the motion itself. The pane renders no rAF frames, so scrubbed
+timelines and idle loops do not advance there; structure, build and DOM are
+confirmed, pacing needs a real browser.
+
+**Revert** — per section, independently: 1 restore the per-fact
+`forEach` timeline + hover-width underline span in `Technology.tsx`; 2 restore
+`DeviceStage.tsx` and its import/ambient tweens in `Features.tsx`, delete
+`RadialNetwork.tsx`; 3 restore the `[data-hw-card]` entrance, bar flicker, and
+original sizes in `HowItWorks.tsx`; 4 drop `AnimatePresence`/`prevActive` in
+`ResellerBenefits.tsx`.
+
+--------------------------------------------------------------------------------
+[015] — Hero header/hero seam fixed properly; sections 2 & 3 of [014] reverted
+--------------------------------------------------------------------------------
+
+**Scope** — `app/page.tsx`, `components/Hero.tsx`, `components/Navbar.tsx`,
+`app/globals.css`, `components/HowItWorks.tsx`.
+
+**The seam — actual root cause, missed in [013].**
+[013] treated the symptoms (nav border, scrollbar track) but not the cause:
+`app/page.tsx` had `<main className="flex-1 mt-20">`, reserving 80px above the
+hero. The hero therefore *started below* the fixed white navbar, so the boundary
+was a white bar butted against a dark hero — no amount of border removal fixes
+that. Now: `mt-20` dropped from `main`, hero padding `pt-8/lg:pt-10` →
+`pt-28/lg:pt-32` so its copy still clears the bar, and the video runs from y=0
+behind the header. Measured `heroTop: 0`, `videoTop: 0`,
+`videoCoversHeader: true`.
+
+**Navbar blended over the hero,** which [013] declined to do and should have.
+`data-atop={!isScrolled}` on the nav; unscrolled it animates to
+`rgba(255,255,255,0)` with `blur(0px)` and its ink inverts to white via
+`nav[data-atop='true'] .nav-ink`. Scrolled onto the light sections it returns to
+the white bar with `#003A70` ink. The inversion is the part that makes
+transparency safe — navy links on the footage would be unreadable.
+Verified by disabling transitions: at top ink is `rgb(255,255,255)`, past the
+hero it is `rgb(0,58,112)`. White nav ink measures **17.69** contrast against the
+video beneath it.
+
+**Hero scroll fade** — already removed in [013]; re-confirmed the copy block's
+inline style is exactly `transform:none` and `h1` opacity is 1.
+
+**WhyChoose** — already added in [013]; re-confirmed live: `.wc-glowfield`
+present, hover `::before` is a radial gradient at `z-index: -1` (behind copy,
+never over it), 5 lift wrappers, clip-path text reveal in place.
+
+**Reverted from [014]**
+· *Signal locked* (`HowItWorks.tsx`) — restored exactly: card padding, icon tile,
+  meter height, figure size, dish size, rail weight, grid columns, the original
+  `[data-hw-card]` entrance and the bar-flicker ambient. The gated build timeline
+  and `data-hw-meter` are gone.
+· *Connected life* — **NOT reverted, and cannot be.** [014] deleted
+  `components/features/DeviceStage.tsx`; there is no git here and the source is
+  not in `.next` or its cache (searched both, including a byte scan for
+  `data-ds-device`). `RadialNetwork` is left in place because it builds and
+  renders; reverting would mean rebuilding DeviceStage from scratch, which is a
+  rewrite, not a revert. Flagged to the user rather than guessed at.
+
+**Verified** — `npx tsc --noEmit` exit 0 · video full-bleed
+(`width === documentElement.clientWidth`, `left 0`) · nav transparent at top and
+opaque past the hero · no console error dialog.
+
+**Not verified** — motion. The pane renders no rAF frames, so Framer's nav
+colour animation and CSS transitions do not advance in it; both were confirmed
+instead by forcing transitions off and reading end states.
+
+**Revert** — restore `mt-20` on `main`, hero `pt-8 lg:pt-10`, navbar
+`backgroundColor` 0.8 / `blur(4px)`, drop `data-atop` + the `.nav-ink` block.
+
+--------------------------------------------------------------------------------
+[016] — "Connected life" restored to the device-stage visual
+--------------------------------------------------------------------------------
+
+**Scope** — new `components/features/DeviceStage.tsx`, `components/Features.tsx`.
+**Deleted:** `components/features/RadialNetwork.tsx`.
+
+Reverses [014]'s radial hub-and-spoke. Note this is a **reconstruction, not a
+true revert**: [014] deleted the original `DeviceStage.tsx` and the source was
+unrecoverable (no git; not in `.next` or its cache). Rebuilt from the user's
+screenshot of the previous section.
+
+**Reconstructed composition** — four mockups staged in depth, matching the
+reference: a TV (largest, upper-left) mid-playback with a centred play control,
+a scrubber and a 6-cell chapter strip; a laptop (lower-left) showing a 2×2 video
+call grid with control dots and a base lip; a phone (lower-right) with a play
+control and progress lines; and a small smart display (upper-right) carrying a
+rotating dial.
+
+**The animation hooks are the real contract** and are reproduced exactly, so the
+GSAP restored into `Features.tsx` binds without change:
+`[data-ds-device]` staged entrance (y 60 / z −240 / rotateX −14, stagger 0.13) ·
+`[data-ds-progress]` scaleX 0.12→1 playback loop · `[data-ds-tile]` opacity
+flicker · `[data-ds-dial]` 22s rotation · `[data-ds-arc]` travelling dash.
+`lit` still drives which screens are awake, so the feature selector keeps working.
+
+**Verified** — `npx tsc --noEmit` exit 0 · no error dialog · 4 `[data-ds-device]`,
+2 `[data-ds-progress]`, 11 `[data-ds-tile]`, 1 `[data-ds-dial]`, 1 `[data-ds-arc]`
+· 0 stale `[data-rn-*]` references · device boxes size in the intended hierarchy
+(TV 422×288, laptop 322×227, display 112×112, phone 87×152) and all sit inside
+the 725×465 stage · 0 stranded elements.
+
+**Not verified** — motion; the pane renders no rAF frames. Geometry is a
+best-effort match to a screenshot, so exact offsets may need nudging.
+
+**Revert** — delete `DeviceStage.tsx`, restore `RadialNetwork.tsx` from [014],
+and swap the import/usage plus the ambient block back in `Features.tsx`.
+
+--------------------------------------------------------------------------------
+[017] — "Connected life" stage becomes a looping video
+--------------------------------------------------------------------------------
+
+**Scope** — `components/features/DeviceStage.tsx`, `components/Features.tsx`,
+new `public/media/connected-devices.*`.
+
+Replaces the illustrated mockups from [016] outright — no device elements are
+layered over or behind the clip.
+
+**Asset** — user-supplied, 1280×720 / 10.005s / 1.73 MB. Its loop cut visibly:
+first vs last frame measured **21.83 dB** PSNR. Re-cut with the same
+tail-over-head crossfade used for the hero; shipped at 9.125s, 1.26 MB, seam
+**34.91 dB**. Poster extracted from frame 0.
+
+**Footprint preserved** — the container keeps the illustration's exact classes
+(`aspect-[4/3] w-full max-w-[620px]`), measured 620×465 before and after, so the
+section does not reflow. `object-contain`, not `cover`: the clip is 16:9 in a 4:3
+box, and cover would crop the outer devices out of frame. The letterbox is
+invisible because the clip's backdrop is the same navy as the section.
+
+**Features.tsx** — the `[data-ds-device]` staged entrance now targets
+`[data-ds-stage]` and seats the plate as one object (`y 42`, `scale 0.94`). All
+`[data-ds-progress]` / `[data-ds-tile]` / `[data-ds-dial]` / `[data-ds-arc]`
+ambient loops removed: their selectors matched illustrated parts that no longer
+exist, so they were dead. Verified 0 remaining references. `DeviceStage` keeps
+its `lit` prop so the caller is untouched, though a video has no per-device state.
+
+**Verified** — `npx tsc --noEmit` exit 0 · no error dialog · stage 620×465 with
+the video filling it exactly, `object-fit: contain` · duration 9.125 (the
+re-cut), `error: null`, autoplay/loop/muted/playsInline/poster all set ·
+**everything else intact**: 4 tabs, "Whole Home Wi-Fi" heading, "View plans"
+link · **tab switching still works** — clicking the third tab changed the heading
+to "Smart Home & Remote Work" and returning to the first restored it, with the
+video still mounted throughout · 0 stale `[data-ds-device]` elements.
+
+**Not verified** — playback; the pane reports `document.hidden: true` and will
+not advance media.
+
+**Revert** — restore the illustrated `DeviceStage.tsx` from [016], put the
+`[data-ds-device]` entrance and the four ambient loops back in `Features.tsx`,
+and delete `public/media/connected-devices.*`.
+
+--------------------------------------------------------------------------------
+[018] — Connected-life stage: container aspect matched to the clip
+--------------------------------------------------------------------------------
+
+**Scope** — `components/features/DeviceStage.tsx`.
+
+**Diagnosis first: the clip was never cropped.** Measured before changing
+anything — `object-fit: contain`, `object-position: 50% 50%`, and **no ancestor
+transform anywhere in the chain** (walked video → body checking `transform`,
+`scale`, `zoom`). The real state was the opposite of cropping: a 16:9 clip in a
+4:3 box rendered **620×349 inside 620×465**, so the whole frame was visible but
+undersized, with 58px of dead space above and below. Extracting a frame from the
+installed file confirmed the router and Wi-Fi lines sit well inside the source
+composition, so the tightness was not in the asset either.
+
+**Fix** — the second option offered: container aspect ratio matched to the clip's
+own. `aspect-[4/3]` → `aspect-video`, and `max-w-[620px]` → `max-w-[720px]` so
+the plate keeps the visual mass the taller box had given it. With the ratios
+equal, `cover` and `contain` resolve identically; `object-cover object-center` is
+used since full-bleed fill was the stated preference.
+
+**Verified** — `npx tsc --noEmit` exit 0 · `object-fit: cover`,
+`object-position: 50% 50%` · native AR 1.7778 vs container AR 1.7778,
+`ratiosMatch: true` · box 720×405, rendered frame 720×405, **cropped 0px on both
+axes** · 0 ancestor transforms · `error: null`, duration 9.125.
+
+Section height at this column drops 465 → 405; nothing else in the section
+changed.
+
+**Revert** — `aspect-video max-w-[720px]` → `aspect-[4/3] max-w-[620px]` and
+`object-cover object-center` → `object-contain`.
+
+--------------------------------------------------------------------------------
+[019] — Connected-life stage: 1.12x crop-in
+--------------------------------------------------------------------------------
+
+**Scope** — `components/features/DeviceStage.tsx`.
+
+Requested tighter crop. `transform: scale(1.12)` on the video element, clipped by
+the container's existing `overflow-hidden`, so the frame's edges run past the
+visible box the way a cropped hero video does. [018] had matched the container to
+the clip's 16:9 with zero crop; this deliberately reintroduces a small one to cut
+the navy padding around the devices.
+
+**Kept on the video, not the container** — GSAP's entrance in `Features.tsx`
+animates `[data-ds-stage]`'s own scale (`from { scale: 0.94 }`). Putting the
+overscale on the stage would mean two systems writing one element's transform,
+and the entrance would snap the crop back to 1.
+
+**Verified** — `npx tsc --noEmit` exit 0 · computed transform
+`matrix(1.12, 0, 0, 1.12, 0, 0)`, scaleX and scaleY both 1.12 ·
+`object-fit: cover`, `object-position: 50% 50%` · stage 720x405 with the video
+painting 806x454 → **86px horizontal / 49px vertical overhang**, `overflow:
+hidden` confirmed on the stage, `clipped: true` · `error: null`.
+
+Before/after was rendered for the user as a static comparison at the real 16:9
+box (frame extracted with ffmpeg, embedded as a data URI, shown at both scales) —
+the preview pane cannot screenshot, so this stands in for one.
+
+**Revert** — drop the `style={{ transform: 'scale(1.12)' }}` from the video.
+
+--------------------------------------------------------------------------------
+[020] — Connected-life stage: new 4:3 clip
+--------------------------------------------------------------------------------
+
+**Scope** — `components/features/DeviceStage.tsx`, `public/media/connected-devices.*`.
+
+**Asset** — "Video Project 21 (1).mp4", 1440x1080 / 10.0s / 30fps / **13.6 MB**.
+Same composition as the previous clip but framed 4:3 with the devices filling the
+frame rather than floating in navy.
+
+Processed before shipping:
+· Loop seam was bad — first vs last frame **18.75 dB** PSNR. Tail-over-head
+  crossfade lifts it to **32.40 dB**.
+· Downscaled 1440x1080 → 1200x900 and re-encoded at crf 24. **13.6 MB → 1.16 MB.**
+  At a 620px display box, 1200px wide is still 2x for retina; shipping 13.6 MB to
+  a rural-internet audience was not defensible.
+· Duration 10.0 → 9.1s (the crossfade consumes the overlap).
+
+**Container re-matched** — this source is **4:3**, not the previous 16:9, so the
+box follows it: `aspect-video max-w-[720px]` → `aspect-[4/3] max-w-[620px]`,
+which also returns the section to the original illustration's 620x465 footprint.
+
+**Overscale removed.** [019]'s `scale(1.12)` was added to crop wide navy padding
+out of the *previous* clip. This one is already framed tight — the corner Wi-Fi
+glyphs sit within ~4% of the edges — so the same overscale would clip content
+instead of background. Dropped, and noted in the file so the reasoning survives.
+
+**Verified** — `npx tsc --noEmit` exit 0 · native 1200x900 (AR 1.3333) vs box
+620x465 (AR 1.3333), `ratiosMatch: true`, **cropped 0px on both axes** ·
+`transform: none`, `object-fit: cover`, `object-position: 50% 50%` · duration 9.1,
+`error: null`, loop/muted/autoplay set · asset serves 200 · tab list (4 rows) and
+"Whole Home Wi-Fi" heading unchanged.
+
+**Caught during verification:** the browser served the *cached* previous file
+(reported 1280x720 / 9.125s) after the swap, since the path is unchanged. Had to
+re-request with a query string to confirm the new asset. Worth remembering — a
+same-path media swap will look like it did nothing until a hard reload.
+
+**Revert** — restore the previous `connected-devices.*` pair, set the container
+back to `aspect-video max-w-[720px]` and re-add `style={{ transform: 'scale(1.12)' }}`.
+
+--------------------------------------------------------------------------------
+[021] — Hero: the actual cause of the "fading" and the right-edge seam
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Hero.tsx`, `app/globals.css`.
+
+Third report of these two. [013] and [015] fixed real things but not the ones
+being seen. Probing the live page instead of re-asserting found both.
+
+**"Content fading" — the CTA block was stuck at opacity 0.**
+Sampling computed opacity at y = 0/150/300/450/600 showed
+`form: 0` at **every** position, while the copy wrapper read `transform:none` /
+opacity 1. That is why the earlier checks passed: they measured the parallax
+wrapper, not the entrance tweens inside it. The hero timeline is `.pause()`d
+while `document.hidden`, and every entrance was a `.from({ opacity: 0 })` — so
+the block only ever becomes visible if the timeline runs. Anything that stops it
+(background-tab load, throttled ticker, GSAP failing) leaves the CTA invisible,
+and a partially-run timeline reads exactly like a scroll-linked fade.
+
+**Removed `opacity: 0` from all 7 hero entrance tweens** (eyebrow, headline,
+sub, offer, form, trust, HUD). They now move only. Content is legible from first
+paint regardless of what happens to GSAP. This is the same rule already written
+into globals for the headline characters; it simply had not been applied to the
+rest of the block.
+
+**Right-edge seam — the scrollbar thumb.**
+Verified the geometry is not at fault: video right edge = section right edge =
+1270 = `documentElement.clientWidth`, nav fully transparent at top, hero top 0,
+no absolutely-positioned child leaving a gap. The only thing occupying the right
+edge is the 10px scrollbar, whose **thumb was still solid `#cbd5e1`** — [013]
+made the *track* transparent but left the thumb a bright grey bar running down
+the dark hero. Now `rgba(148,163,184,0.45)` (hover 0.7), translucent so it reads
+acceptably over both the dark hero and the light sections.
+
+**Verified after reload** — opacity sampled at y = 0/250/500/750:
+eyebrow, h1, sub, offer, form and trust all **1.000 at every position**,
+`allFullyVisibleAlways: true`. `npx tsc --noEmit` exit 0.
+
+**Revert** — re-add `opacity: 0` to the entrance tweens in `Hero.tsx` and set
+`::-webkit-scrollbar-thumb` back to `#cbd5e1` / `#94a3b8`.
+
+--------------------------------------------------------------------------------
+[022] — Hero: last scroll-linked opacity removed; gap claim re-measured
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Hero.tsx`.
+
+**Searched as asked** for `useScroll` / `useTransform` / `whileInView` / opacity
+bound to scroll on the ZIP form and trust row specifically. Findings:
+
+· The form and badge row carry **no opacity animation at all**. Effective
+  opacity — the product of every ancestor's opacity up to `<html>` — measured
+  **1.000** for the ZIP input, the Check Availability button and the first badge
+  at y = 0/300/600, with **zero dimming ancestors** in any chain.
+· Their colours are not dim either: the ZIP sits on an opaque **white card**
+  (`bg-white`), so its dark `oklch(0.278 …)` text is correct; the button is white
+  on `rgb(222,55,0)`; the trust labels are near-white at 0.9 alpha with
+  `#0096FA` icons on the section's navy.
+
+**One genuine scroll-linked opacity did remain, and is now gone.**
+`glowOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.15])` drove the
+cursor spotlight and the aurora field. Those sit *behind* the copy, so as you
+scrolled the entire hero backdrop dimmed to 15% — which reads as the content
+fading even though the content's own opacity never moved. Both are now constant;
+the aurora `motion.div` became a plain `div` since it no longer animates.
+
+**Verified after reload** — zip / button / trust row / first badge all at
+effective opacity **1.000 at y = 0, 300, 600 and 900**. Aurora is a constant 0.55
+at every position (its CSS keyframe, not scroll-bound).
+
+**Gaps — measured at 1920x1080, none found.**
+`video.top = 0`, `video.left = 0`, `video.right = 1910` =
+`documentElement.clientWidth`; `gapAboveVideo: 0`, `gapRightOfVideo: 0`;
+`body` and `main` both `margin-top: 0`; section top 0. The only thing occupying
+the right edge is the 10px scrollbar (innerWidth 1920 vs clientWidth 1910), which
+no element can paint under. Its track is already transparent and its thumb
+translucent since [021].
+
+**Open** — the referenced screenshot did not attach, so the remaining visual
+cannot be matched to a measurement. Everything instrumented reads correct at both
+1280 and 1920.
+
+**Revert** — restore `glowOpacity` and re-apply it to the spotlight and aurora
+(the aurora wrapper must go back to `motion.div`).
+
+--------------------------------------------------------------------------------
+[023] — Hero: scroll blur removed (it was real, not a GPU artifact)
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Hero.tsx`.
+
+Reported as an unintended sub-pixel/rasterisation artifact. It was not — there
+was a deliberate scrubbed blur:
+
+    gsap.to('[data-hero-blurlayer]', { filter: 'blur(6px)', scrub: true,
+      scrollTrigger: { start: 'top top', end: 'bottom top' } })
+
+`[data-hero-blurlayer]` is the wrapper around the **entire hero content grid**,
+so the headline, ZIP form and trust row all softened to 6px as the hero exited.
+It was added as a focal-falloff cue against the next section. Removed outright,
+along with the now-unused attribute so nothing re-attaches to it. Reducing it was
+not the answer: the effect is visually indistinguishable from a broken GPU
+composite, and legibility beats the depth cue.
+
+**None of the five GPU fixes were applied, deliberately.** `backface-visibility`,
+`translateZ(0)`, `preserve-3d`, `force3D` toggles and `will-change` removal all
+address rasterisation blur — a different failure. Adding them here would have
+been cargo-cult: they could not have fixed a literal `filter: blur()`, and
+several are counterproductive (forcing extra composite layers is a common *cause*
+of the artifact they are meant to cure). The only `will-change: transform` in the
+hero is on the video element itself, which animates continuously and legitimately
+warrants the hint; it was left alone.
+
+**Verified after reload** — computed `filter` on the section, the content grid,
+the `h1` and the ZIP form measured `none` at y = 0/200/400/600/800.
+`neverBlurs: true`. `npx tsc --noEmit` exit 0.
+
+**Revert** — restore the `gsap.to('[data-hero-blurlayer]', …)` tween and re-add
+the `data-hero-blurlayer` attribute to the content grid wrapper.
+
+--------------------------------------------------------------------------------
+[024] — JUPITER list: pinned scrub, opposite-side entrance, glow hand-off
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Technology.tsx`, `app/globals.css`.
+
+Replaces [014]'s gated timeline. Section now **pins** (`pin: true`,
+`anticipatePin: 1`, `end: '+=' + facts.length * 620`, `invalidateOnRefresh`) and
+the three rows are scrubbed through it.
+
+Per row, in a 1-unit slot: numeral enters from **x −110**, its copy from
+**x +110**, both `opacity 0 → 1` over `ENTER = 0.55`; underline draws; then at
+`at + ENTER` the row lights (`--glow 0 → 1`, numeral colour → `#0096FA`) **and in
+the same beat** the previous row unlights (`--glow → 0`, `opacity → 0.4`, numeral
+colour → `rgba(255,255,255,0.15)`). One timeline, `scrub: true`, so scrolling up
+reverses the whole sequence exactly.
+
+**Glow is driven by a registered `--glow` <number>**, not by tweening shadows:
+GSAP cannot interpolate a shadow string but interpolates a number fine, and
+`@property` registration is what makes the custom property animate rather than
+jump.
+
+**Three CSS dead-ends hit and worked around — worth recording:**
+1. `color-mix(in srgb, … calc(var(--glow) * 100%), …)` on the numeral was
+   silently **dropped as invalid**; computed colour never left the Tailwind
+   value. Numeral colour is now tweened by GSAP directly.
+2. A `text-shadow` whose blur and alpha were both `calc(var(--glow) * n)`
+   likewise never rendered.
+3. `filter: drop-shadow(...)` with the same calc pattern resolved at `--glow: 0`
+   but **collapsed to transparent black at 1** on the numeral — while the
+   identical construction worked on the copy beside it. Chaining two
+   drop-shadows broke both. Abandoned in favour of the halo span already behind
+   the numeral, driven by a bare `opacity: var(--glow)` with no calc to fail.
+
+**Also changed** — the photo column's Framer scroll parallax was removed: the
+section pins, so a drift measured against page scroll would slide the photos
+while their column is frozen.
+
+**Verified** — `npx tsc --noEmit` exit 0 · no error dialog · pin created
+(`.pin-spacer` present, 2802px) · 3 facts, 3 halos, 3 underlines, 3 copy hooks ·
+start states applied: numeral `matrix(…, -110, 0)`, copy `matrix(…, 110, 0)` ·
+glow toggling verified by setting `--glow` directly: halo opacity `0 → 1`, copy
+drop-shadow `0px → 12px @ 0.32`.
+
+**Not verified** — the scrub itself. The pane runs no rAF frames, so
+ScrollTrigger never advances the timeline there; every sampled scroll offset sat
+at the start state. Structure, pin, start states and the glow mechanism are
+confirmed; pacing and the hand-off need a real browser.
+
+**Note on the initial state:** rows start at `opacity: 0` by request, so they
+depend on the timeline running to become visible. That is the pattern removed
+from the hero in [021] for exactly this reason. Acceptable here because the rows
+are decorative-adjacent and the section pins around them, but if GSAP fails the
+list is blank.
+
+**Revert** — restore [014]'s `gate` timeline (no pin), remove `data-tech-copy` /
+`data-tech-numglow`, drop the `--glow` block from globals, and restore the
+`photoY` Framer parallax on the photo grid.
+
+--------------------------------------------------------------------------------
+[025] — Hero video gap: the real cause, finally
+--------------------------------------------------------------------------------
+
+**Scope** — `components/Hero.tsx`, `components/hero/OrbitScene.tsx`.
+
+**Why [013]/[015]/[022] all measured clean and were all wrong.**
+Every previous check sampled geometry at **scroll position 0**, where the
+parallax is identity. The plate was being animated:
+
+    sceneScale = useTransform(scrollYProgress, [0, 1], [1, 0.88])
+    sceneY     = useTransform(scrollYProgress, [0, 1], [0, 160])
+
+So as soon as the user scrolled, the video **shrank to 88% and dropped 160px**,
+pulling its edges inside the section and exposing the surface behind — the gap
+along the top and right. Not a scrollbar, not sub-pixel rounding: a transform
+doing exactly what it was told.
+
+**Fixes**
+1. `sceneScale` removed entirely and no longer passed. A background plate must
+   never scale below full coverage.
+2. `sceneY` re-centred `[0, 160]` → `[-80, 80]`. A one-directional drift can only
+   ever push the plate off one edge.
+3. The plate is oversized to 128% at `top/left: -14%`, giving the drift headroom
+   on all four sides.
+
+**Two dead-ends worth recording, both silent:**
+· `-inset-[14%]` + `w-[128%]` (Tailwind arbitrary) rendered a **178px gap on the
+  right** — the inset and the width fought over which edge won.
+· Moving to explicit inline `style={{ top, left, width, height }}` on the
+  `motion.video` **did not help**: Framer silently dropped the percentage
+  `width`, so the element rendered at 100% while `left: -14%` applied — the same
+  178px right-hand gap, now from a different cause. The oversizing therefore
+  lives on a plain wrapper `div`, with Framer writing only the transform on the
+  video inside it.
+
+**Verified — every edge, six scroll positions, four viewport widths.**
+Metric is (section edge − video edge); positive = overhang, negative = gap.
+
+| width | min edge across all samples | any gap |
+|---|---|---|
+| 1280 | +44.0 | no |
+| 1920 | +53.1 | no |
+| 1366 | +44.0 | no |
+| 1024 | +66.4 | no |
+
+Scroll positions sampled at y = 0/150/300/500/700/900 at each width;
+`anyGap: false` in all four runs. `npx tsc --noEmit` exit 0.
+
+**Revert** — restore `sceneScale`, set `sceneY` back to `[0, 160]`, pass both to
+`OrbitScene`, and drop the oversized wrapper so the video is `inset-0 h-full w-full`.
+
+--------------------------------------------------------------------------------
+[026] — Navbar legibility over the hero video
+--------------------------------------------------------------------------------
+
+**Scope** — `components/hero/OrbitScene.tsx`.
+
+Since [015] the video runs the full section height *including behind the fixed
+navbar*, and since [025] the plate is oversized — so the satellite, the brightest
+element in the frame, was landing directly behind the nav links.
+
+**Fix — a top scrim, not an opaque bar.** A 128px gradient
+(`rgba(5,16,58,0.92)` → transparent) sits above the video and below the HUD.
+Deliberately not the requested "solid or sufficiently opaque background" on the
+navbar itself: the transparent navbar was adopted in [015] specifically to remove
+the hard header/hero seam, and giving it a solid fill would reintroduce exactly
+that. A gradient behind it restores legibility while keeping the blend.
+
+**Stacking confirmed correct, no change needed** — navbar `z-50` (fixed) ›
+hero content `z-10` › OrbitScene host `z-0`. Requirement 3 was already satisfied.
+
+**Requirement 2 (shrink/reposition the video) not applied** — it would have cost
+composition to solve a contrast problem the scrim solves without touching
+framing.
+
+**Verified** — mean contrast against white nav ink now **17.0–17.8** across all
+six nav items. More usefully, the **worst case**: scanning every pixel in the
+navbar band for the brightest composited point gives **7.90** — still above AAA
+(7.0) and well above AA (4.5). Note this samples the currently-decoded frame; the
+pane cannot advance playback, so a brighter frame later in the loop is possible,
+though 7.9 leaves reasonable headroom. `npx tsc --noEmit` exit 0.
+
+**Revert** — delete the `inset-x-0 top-0 h-32` gradient div from `OrbitScene`.
+
+--------------------------------------------------------------------------------
+[027] — Hero plate: zoom reverted, seam fixed by masking + colour match
+--------------------------------------------------------------------------------
+
+**Scope** — `components/hero/OrbitScene.tsx`, `components/Hero.tsx`.
+
+Undoes the overscale approach of [019]/[025]. Zooming to hide the seam was the
+wrong trade — it cropped the satellite.
+
+**Revert** — video is back to `object-contain`, `inset-0`, `h-full w-full`, no
+overscale wrapper and no `scale` transform. Measured at 1900x880: box 1890x886,
+drawn frame 1574x886, **0px cropped**, `transform: matrix(1,0,0,1,0,-34)` —
+translate only. The whole satellite is in frame.
+
+**Seam fix — Option A plus colour matching, not blend mode.**
+1. *Colour match.* Sampled the clip's own edge bands: left `#063f68`,
+   right `#051a33`, top `#073050`, bottom `#183754`. The section was painting
+   `#0E4275`, markedly brighter than any of them — **that mismatch was the seam**.
+   A backdrop div behind the video is now `#0A3050`, inside the measured range.
+   Residual RGB distance from the clip's own edges to the backdrop: **left 29,
+   right 39** — no visible step at these luminances.
+2. *Edge mask.* Two linear gradients intersected
+   (`mask-composite: intersect`, webkit `source-in`) fade all four sides to
+   transparent over the outer ~9%, so the footage dissolves into the matched
+   backdrop instead of ending on a hard line.
+
+**Blend mode (Option B) deliberately not used** — `screen`/`lighten` on a
+dark-navy clip over a dark-navy section lifts the black point and washes the
+midtones; it drops the background out at the cost of the whole image's contrast.
+Masking achieves the same join without touching tonality.
+
+**Parallax reduced** — `sceneY` `[-80, 80]` → `[-34, 34]`. With no overscale the
+drift has to stay inside what the 9% mask can hide.
+
+**Verified** — `npx tsc --noEmit` exit 0 · `object-fit: contain`, mask applied,
+`mask-composite` resolved, backdrop `rgb(10, 48, 80)` present · entire frame
+visible with zero crop at 1024x900 and 1900x880 · `error: null`.
+
+**Note** — with `contain` the plate letterboxes: 158px each side at 1900x880, and
+considerably more vertically on narrow/tall viewports (476px at 1024x900). That
+area is flat `#0A3050`. It reads as sky because it matches the clip's edges, but
+it is flat colour, which is the cost of showing the whole satellite.
+
+**Revert** — restore the oversized wrapper (`128%` at `-14%`) with
+`object-cover`, drop `PLATE_BG`/`EDGE_MASK` and the backdrop div, and set
+`sceneY` back to `[-80, 80]`.

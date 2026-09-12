@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   OFFICIAL HUGHESNET VISUAL IDENTITY
+   --------------------------------------------------------------------------
+   Enterprise presentation: crisp white surfaces, soft slate backgrounds,
+   subtle borders, high-contrast text. Animation is purposeful only — there are
+   no ambient loops, no decorative keyframes, no cursor effects.
+   ========================================================================== */
+
+@theme {
+  /* Primary navy / deep blue */
+  --color-brand-navy: #002b49;
+  --color-brand-navy-deep: #0b2238;
+
+  /* Hughesnet cyan / accent blue */
+  --color-brand-cyan: #00a3e0;
+  --color-brand-cyan-dark: #0082ca;
+
+  /* CTA orange */
+  --color-brand-orange: #ff5100;
+  --color-brand-orange-dark: #e04000;
+
+  /* Surfaces */
+  --color-brand-white: #ffffff;
+  --color-brand-slate: #f4f6f8;
+
+  /* Typography */
+  --color-brand-ink: #0f172a;
+  --color-brand-muted: #475569;
+
+  --font-sans: var(--font-source-sans), 'Source Sans 3', system-ui, Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Offset anchor targets so the sticky header never covers a heading. */
+    scroll-padding-top: 7.5rem;
+  }
+
+  body {
+    @apply bg-brand-white text-brand-ink font-sans antialiased;
+    /* Guards against any single wide child creating a horizontal scrollbar. */
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold tracking-tight text-brand-navy;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Standard browser cursors only. No custom pointer effects of any kind. */
+  a,
+  button,
+  summary,
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-cyan;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ==========================================================================
+   §3 CANONICAL PRICE LOCKUP
+   --------------------------------------------------------------------------
+   A flex row on a shared baseline. The integer is visually dominant; currency,
+   cents and period are muted and optically aligned WITHOUT vertical-align
+   hacks or margin tricks — `align-items: baseline` does the work.
+   ========================================================================== */
+
+.lockup {
+  @apply flex flex-col gap-1;
+}
+
+.lockup__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.075em;
+  margin: 0;
+  color: var(--color-brand-navy);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  line-height: 1;
+}
+
+.lockup__cur {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-brand-muted);
+}
+
+.lockup__int {
+  /* Size is set per-instance (2.75rem / 3.5rem) — both inside the §3 range. */
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.lockup__cents {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-brand-muted);
+}
+
+.lockup__per {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-brand-muted);
+  margin-left: 0.15em;
+}
+
+.lockup__qual {
+  @apply text-sm font-semibold text-brand-muted;
+  margin: 0;
+}
+
+.lockup__step {
+  @apply text-xs leading-relaxed text-brand-muted;
+  margin: 0;
+}
+
+.lockup__fine {
+  margin: 0;
+  @apply text-xs;
+}
+
+.lockup__fine a {
+  @apply font-semibold text-brand-cyan-dark underline underline-offset-2;
+}
+
+/* Dark surfaces (hero) invert the lockup's muted tones. */
+.lockup--invert .lockup__row {
+  color: #ffffff;
+}
+.lockup--invert .lockup__cur,
+.lockup--invert .lockup__cents,
+.lockup--invert .lockup__per,
+.lockup--invert .lockup__qual,
+.lockup--invert .lockup__step {
+  color: rgba(255, 255, 255, 0.78);
+}
+.lockup--invert .lockup__fine a {
+  color: #7dd3fc;
+}
+
+/* ==========================================================================
+   SHARED LAYOUT PRIMITIVES
+   ========================================================================== */
+
+.shell {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+}
+
+.section {
+  @apply py-16 sm:py-20 lg:py-24;
+}
+
+.card {
+  @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm;
+}
+
+.eyebrow {
+  @apply text-xs font-bold uppercase tracking-[0.18em] text-brand-cyan-dark;
+}
+
+/* Long, unbreakable strings (URLs, emails) must never widen the viewport. */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
