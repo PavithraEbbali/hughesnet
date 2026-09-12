@@ -74,10 +74,14 @@ loads are fast and edits hot-reload.
 ## Deploying to Vercel
 
 1. Import the repository. Vercel auto-detects Next.js; no build settings needed.
-2. Set **`APP_URL`** in Project → Settings → Environment Variables to the public
-   origin (e.g. `https://your-domain.com`). It backs `metadataBase`, so Open
-   Graph and Twitter card images resolve to absolute URLs. Without it, link
-   previews point at localhost.
+2. **`APP_URL` is optional.** If unset, the site falls back to Vercel's own
+   `VERCEL_URL`, so Open Graph and Twitter card images already resolve to
+   absolute URLs on every deployment and preview. Set `APP_URL` in Project →
+   Settings → Environment Variables only once you have a custom domain, so link
+   previews point at it rather than the `.vercel.app` host.
+
+   A blank or malformed value is ignored rather than fatal — an empty `APP_URL`
+   previously failed the build with `Invalid URL` while Next collected page data.
 
 ## Verification
 

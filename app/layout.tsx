@@ -16,16 +16,43 @@ const sourceSans = Source_Sans_3({
 });
 
 /**
- * Open Graph and Twitter image URLs must be absolute when a crawler fetches
- * them, so Next needs a base to resolve `/images/og-share.jpg` against. It comes
- * from APP_URL in the environment, falling back to localhost for local dev.
- * Set APP_URL to the production origin before deploying or link previews will
- * point at localhost.
+ * Resolves the origin that Open Graph and Twitter image paths are made absolute
+ * against.
+ *
+ * This must never throw. `new URL('')` raises ERR_INVALID_URL, and because
+ * `metadata` is evaluated while Next collects page data, a throw here fails the
+ * whole build — which is exactly what happened on Vercel: APP_URL existed but
+ * was an empty string, and `??` only falls back on null/undefined, not on ''.
+ *
+ * Order of preference:
+ *   1. APP_URL          — an explicitly configured origin (custom domain)
+ *   2. VERCEL_URL       — injected automatically by Vercel on every deployment,
+ *                         so previews get correct absolute URLs with no config
+ *   3. localhost        — local development
+ *
+ * Any value that is blank or unparseable is skipped rather than fatal.
  */
-const siteUrl = process.env.APP_URL ?? 'http://localhost:3000';
+function resolveSiteUrl(): URL {
+  const candidates = [
+    process.env.APP_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ];
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (!trimmed) continue;
+    try {
+      return new URL(trimmed);
+    } catch {
+      // Malformed value — fall through to the next candidate.
+    }
+  }
+
+  return new URL('http://localhost:3000');
+}
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: resolveSiteUrl(),
   title: `${operator.legalName} | Independent Authorized Retailer of Hughesnet®`,
   description:
     'Independent authorized retailer of Hughesnet® satellite internet. Plans powered by JUPITER™ 3 with built-in Wi-Fi 6 and no hard data limits. Call to confirm availability and pricing at your address.',
