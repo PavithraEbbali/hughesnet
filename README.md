@@ -25,9 +25,6 @@ These are blocking. They are all one-file edits in `lib/content.ts`.
    set `PRICING_VERIFIED = true`.
 3. **Legal page copy is a drafting scaffold.** All nine routes render a visible
    "not reviewed legal copy" notice until counsel replaces the body text.
-4. **Next.js 15.1.0 carries a published advisory**
-   ([CVE-2025-66478](https://nextjs.org/blog/CVE-2025-66478)). Patched releases
-   exist in the 15.5.x line.
 
 ---
 
@@ -94,11 +91,17 @@ Checked at 320 / 360 / 640 / 768 / 1024 px: no horizontal overflow at any width.
 All `tel:` links carry `data-call-cta`. All images carry alt text except the two
 decorative backgrounds, which are `aria-hidden`.
 
-## Known cleanup
+## Dependencies
 
-Ten declared dependencies are no longer imported anywhere (`@google/genai`,
-`gsap`, `@gsap/react`, `motion`, `lucide-react`, `@hookform/resolvers`,
-`@opentelemetry/api`, `class-variance-authority`, `clsx`, `tailwind-merge`),
-along with the `firebase-tools` devDependency. `lib/utils.ts` and
-`hooks/use-mobile.ts` are dead files. Removing them would cut install and build
-time; left in place pending review.
+The install is deliberately minimal: only `next` and `react` are imported by
+application code. `autoprefixer` and `postcss` back the Tailwind pipeline.
+
+Ten unused runtime dependencies and three unused dev dependencies were removed —
+including `firebase-tools`, which pulled in `re2` and its node-gyp compile step.
+That took the install from **989 packages to 344** and reported vulnerabilities
+from **26 to 2**.
+
+The two remaining advisories are in a `postcss` copy nested inside Next's own
+dependency tree. They are build-time CSS-processing issues rather than runtime
+exposure for a statically prerendered site, and clearing them requires Next 16 —
+a major version jump not worth taking for this.
